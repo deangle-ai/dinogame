@@ -13,19 +13,24 @@ GROUND_Y = GAME_HEIGHT - 40
 PLAYER_SIZE = 50
 OBSTACLE_WIDTH = 15
 OBSTACLE_HEIGHT = 12
-OBSTACLE_SPEED = 5  # 기존 200에서 5로 수정 (적당한 속도)
-GRAVITY = 1        # 기존 3 → 4 (더 빨리 내려옴)
-JUMP_VELOCITY = -12  # 기존 -12에서 -8로 수정 (점프 높이 낮춤)
+OBSTACLE_SPEED = 5
+GRAVITY = 1
+JUMP_VELOCITY = -12
 
 # ----------------------------
-# 플레이어 스프라이트 불러오기
+# 이미지 로드 함수
 # ----------------------------
-@st.cache_resource
-def load_sprite():
+def load_player_sprite():
     img = Image.open("dino_sprite.png").convert("RGBA")
     return img.resize((PLAYER_SIZE, PLAYER_SIZE))
 
-PLAYER_SPRITE = load_sprite()
+def load_background_image():
+    # PNG 배경 → RGBA로 불러서 투명도 유지
+    bg = Image.open("background_space.png").convert("RGBA")
+    return bg.resize((GAME_WIDTH, GAME_HEIGHT))
+
+PLAYER_SPRITE = load_player_sprite()
+BACKGROUND_IMAGE = load_background_image()
 
 # ----------------------------
 # 세션 상태 초기화
@@ -47,7 +52,7 @@ if "game_over" not in st.session_state:
 # UI 헤더
 # ----------------------------
 st.title("🦖 Dino-like 공룡 점프 게임")
-st.caption("오른쪽에서 오는 장애물을 점프해 피하세요!")
+st.caption("🌌 background_space.png 별자리 배경 위에서 장애물을 넘자!")
 
 # ----------------------------
 # 게임 오버 화면
@@ -85,7 +90,6 @@ if st.session_state.player_y >= GROUND_Y - PLAYER_SIZE:
 # 장애물 생성 (한 번에 한 개만)
 # ----------------------------
 if (not st.session_state.obstacles) or (st.session_state.obstacles[-1][0] < GAME_WIDTH - 200):
-    # 장애물이 없거나, 마지막 장애물이 충분히 왼쪽으로 이동했을 때만 새 장애물 생성
     st.session_state.obstacles.append([
         GAME_WIDTH,
         GROUND_Y - OBSTACLE_HEIGHT
@@ -120,11 +124,12 @@ st.subheader(f"🏆 현재 점수: {st.session_state.score}")
 # ----------------------------
 # 이미지 합성 (Pillow)
 # ----------------------------
-frame = Image.new("RGBA", (GAME_WIDTH, GAME_HEIGHT), (255, 255, 255, 255))
+# ✔️ PNG 배경은 이미 RGBA → 복사해서 베이스로 사용
+frame = BACKGROUND_IMAGE.copy()
 draw = ImageDraw.Draw(frame)
 
 # 바닥선
-draw.line([(0, GROUND_Y), (GAME_WIDTH, GROUND_Y)], fill="black", width=3)
+draw.line([(0, GROUND_Y), (GAME_WIDTH, GROUND_Y)], fill="white", width=3)
 
 # 장애물
 for ox, oy in st.session_state.obstacles:
@@ -136,12 +141,15 @@ for ox, oy in st.session_state.obstacles:
 # 플레이어 공룡 스프라이트
 frame.paste(PLAYER_SPRITE, (st.session_state.player_x, st.session_state.player_y), PLAYER_SPRITE)
 
-# 출력
-st.image(frame)
+# 최종 출력 → RGB로 변환 (알파채널 제거)
+final_frame = frame.convert("RGB")
 
 # ----------------------------
-# 게임 루프
+# 출력 (placeholder로 중복 방지)
 # ----------------------------
+placeholder = st.empty()
+placeholder.image(final_frame)
+
 time.sleep(0.05)
-st.rerun()
-
+placeholder.empty()
+st.experimental_rerun()
